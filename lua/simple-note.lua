@@ -12,7 +12,8 @@ end
 local config = {
   notes_dir = "~/notes/",
   notes_directories = {},
-  notes_name_template = "%A_%B_%d_%Y_%I_%M_%S_%p",
+  notes_name_template = "%Y_%m_%d_%H_%M_%S",
+  notes_title_template = "%a, %b %d, %Y %H:%M:%S",
   telescope_new = "<C-n>",
   telescope_delete = "<C-x>",
   telescope_rename = "<C-r>",
@@ -38,7 +39,7 @@ M.listNotes = function()
   M.picker = require("telescope.builtin").find_files({
     cwd = M.config.notes_dir,
     find_command = function()
-      if vim.fn.has "win32" == 1 then
+      if vim.fn.has("win32") == 1 then
         return { "cmd", "/c", "dir", "/b", "/a:-d" }
       else
         return { "find", ".", "-maxdepth", "1", "-not", "-type", "d" }
@@ -84,6 +85,13 @@ M.listNotes = function()
         actions.close(prompt_bufnr) -- Close the previewer
         M.pickNotesDirectory()
       end, { desc = "Change notes directory" })
+
+      actions.select_default:replace(function(prompt_bufnr)
+        actions.close(prompt_bufnr)
+        local selection = actions_state.get_selected_entry()
+        vim.cmd("vsplit " .. selection.path)
+      end)
+
       return true
     end,
   })
@@ -109,7 +117,7 @@ M.createAndOpenNoteFile = function(opts)
     return
   end
 
-  vim.cmd("edit " .. full_path)
+  vim.cmd("vsplit " .. full_path)
 end
 
 ---@param opts table
@@ -141,9 +149,11 @@ M.createNoteFile = function(opts)
     return nil
   end
 
-  vim.notify(full_path .. " has been created")
-
+  file:write(
+    "--- \ndate: " .. os.date(M.config.notes_title_template) .. "\nauthor: " .. os.getenv("USER") .. "\n--- \n"
+  )
   file:close()
+
   return full_path
 end
 
